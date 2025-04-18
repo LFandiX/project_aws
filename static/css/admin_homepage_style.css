@@ -1,0 +1,81 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+header {
+    background-color: #333;
+    color: white;
+    padding: 15px;
+    font-size: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+.menu-icon {
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    text-align: left;
+    min-width: 120px;
+}
+.dropdown-menu a {
+    display: block;
+    padding: 10px;
+    text-decoration: none;
+    color: black;
+}
+.dropdown-menu a:hover {
+    background-color: #f4f4f4;
+}
+.container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 20px;
+}
+.section {
+    margin: 40px 0;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #f9f9f9;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background-color: #333;
+    color: white;
+}
+.approve-button, .reject-button {
+    padding: 8px 12px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    min-width: 80px;
+}
+.approve-button {
+    background-color: #28a745;
+}
+.reject-button {
+    background-color: #dc3545;
+}

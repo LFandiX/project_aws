@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/admin_homepage_style.css">
+    <title>Admin - Car Rental Management</title>
+    
+</head>
+<body>
+    <header>
+        Admin - Car Rental Management
+        <div class="menu-icon" onclick="toggleMenu()">☰</div>
+        <div class="dropdown-menu" id="dropdownMenu">
+            <a href="{{ url_for('login') }}">Logout</a>
+        </div>
+    </header>
+    <div class="container">
+        <section class="section">
+            <h2>Pending Rental Approvals</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Car</th>
+                        <th>Rental Date - Return Date</th>
+                        <th>Qty</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="rental-requests">
+                </tbody>
+            </table>
+        </section>
+        <section class="section">
+            <h2>Rental History</h2>
+            <input type="text" id="search" placeholder="Search history..." onkeyup="searchHistory()">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Car</th>
+                        <th>Rental Date - Return Date</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="rental-history"></tbody>
+            </table>
+        </section>
+    </div>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById("dropdownMenu");
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+        
+        function showPendingRentals () {
+            pendingRentals.forEach((rental, index) => {
+                console.log(`Index: ${index}, Nama: ${rental.user_info.name}`);
+            });
+        }
+
+
+        const rentalsElement = document.getElementById('rental-requests');
+        let pendingRentals = JSON.parse('{{ rentals | tojson | safe }}');
+        console.log(pendingRentals);
+        let rentalHistory = [];
+        console.log(rentalHistory)
+        let rentalPending = pendingRentals.filter(rental => rental.approval_status === 'pending')
+        let rentalOther = pendingRentals.filter(rental => rental.approval_status === 'approved' || rental.approval_status === 'rejected')
+        console.log(rentalPending)
+        console.log(rentalOther)
+
+        function loadPendingRentals() {
+            const rentalList = document.getElementById("rental-requests");
+            rentalList.innerHTML = "";
+            rentalPending
+            .forEach((rental, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${rental.user_info.name}</td>
+                    <td>${rental.car_info.brand} (${rental.car_info.model})</td>
+                    <td>${rental.rental_date} - ${rental.return_date}</td>
+                    <td>1</td>
+                    <td>
+                        <button class="approve-button" onclick="approveRental(${index})">Approve</button>
+                        <button class="reject-button" onclick="rejectRental(${index})">Reject</button>
+                    </td>
+                `;
+                rentalList.appendChild(row);
+            });
+
+            loadRentalHistory();
+        }
+        
+
+        function approveRental(index) {
+            let rentalData = rentalPending[index];
+            
+            fetch('/update_rental_status', { 
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    rental_id: rentalData.rental_id, 
+                    new_status: "approved",
+                    task: "approve"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response dari server:", data);
+                if (data.success) {
+                    rentalHistory.push({ ...rentalData, status: "Approved" });
+                    rentalPending.splice(index, 1);
+                    loadPendingRentals();
+                } else {
+                    console.error("Gagal memperbarui status rental");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        
+        function rejectRental(index) {
+            let rentalData = rentalPending[index];
+            
+            fetch('/update_rental_status', { 
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    rental_id: rentalData.rental_id, 
+                    new_status: "rejected",
+                    task: "reject"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response dari server:", data);
+                if (data.success) {
+                    rentalHistory.push({ ...rentalData, status: "Rejected" });
+                    rentalPending.splice(index, 1);
+                    loadPendingRentals();
+                } else {
+                    console.error("Gagal memperbarui status rental");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+        
+
+        async function loadRentalHistory() {
+            const historyList = document.getElementById("rental-history");
+            historyList.innerHTML = "";
+
+            if (rentalHistory.length === 0) {
+                console.log("saat kosong")
+                rentalOther
+                .forEach(rental => {
+                    rentalHistory.push({ 
+                        ...rental, 
+                        status: rental.approval_status === 'approved' ? "Approved" : "Rejected"
+                    });
+                });
+            } else {
+                console.log("saat sudah ada isinya")
+                rentalHistory = [];
+
+                // ambil data baru:
+                fetch('/update_rental_status', { 
+                    method: 'POST', 
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        rental_id: 12345, 
+                        new_status: "approved",
+                        task: "load history"
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("sudah responn")
+                    let updateRentals = data.rental_data;
+                    console.log("updateRentals:", updateRentals);
+                    
+                    rentalOther = updateRentals.filter(rental => rental.approval_status === 'approved' || rental.approval_status === 'rejected');
+
+                    rentalOther.forEach(rental => {
+                        rentalHistory.push({ 
+                            ...rental, 
+                            status: rental.approval_status === 'approved' ? "Approved" : "Rejected"
+                        });
+                    });
+
+                    console.log(rentalHistory);
+
+                    rentalHistory.forEach((rental, index) => {
+                        console.log(index, rental.approval_status)
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                        <td>${rental.user_info.name}</td>
+                        <td>${rental.car_info.brand} (${rental.car_info.model})</td>
+                        <td>${rental.rental_date} - ${rental.return_date}</td>
+                        <td>1</td>
+                        <td>${rental.approval_status === 'approved' ? 'Approved' : 'Rejected'}</td>
+                        `;
+                        historyList.appendChild(row);
+                    });
+                    console.log("######")
+                })
+                .catch(error => console.error("Gagal mengambil data rental:", error));
+            }
+            
+            rentalHistory.forEach((rental, index) => {
+                console.log(index, rental.approval_status)
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                <td>${rental.user_info.name}</td>
+                <td>${rental.car_info.brand} (${rental.car_info.model})</td>
+                <td>${rental.rental_date} - ${rental.return_date}</td>
+                <td>1</td>
+                <td>${rental.approval_status === 'approved' ? 'Approved' : 'Rejected'}</td>
+                `;
+                historyList.appendChild(row);
+            });
+            console.log("######")
+        }
+        
+        function searchHistory() {
+            const filter = document.getElementById("search").value.toLowerCase();
+            const historyList = document.getElementById("rental-history");
+            const rows = historyList.getElementsByTagName("tr");
+            Array.from(rows).forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? "table-row" : "none";
+            });
+        }
+        
+        loadPendingRentals();
+    </script>
+</body>
+</html>

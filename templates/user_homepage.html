@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/css/user_homepage_style.css">
+    <title>Car Rental</title>
+
+</head>
+<body>
+    <header>Car Rental Service
+        <div class="menu-icon" onclick="toggleMenu()">☰</div>
+        <div class="dropdown-menu" id="dropdownMenu">
+            <a href="{{ url_for('login') }}">Logout</a>
+            <a href="#" onclick="processPayment()">Payment</a>
+        </div>
+    </header>
+    <nav>
+        <a href="#browse">Browse Cars</a>
+        <a href="#history">Rental History</a>
+    </nav>
+    <div class="container">
+        <div class="section-box">
+            <section id="browse" class="section">
+                <h2>Browse Available Cars</h2>
+                <p>Explore our collection of rental cars and find the perfect one for you.</p>
+                <div class="filter-container">
+                    <label for="price-filter">Filter by Price:</label>
+                    <select id="price-filter" onchange="filterCars()">
+                        <option value="all">All</option>
+                        <option value="low">Below $500</option>
+                        <option value="medium">$500 - $2000</option>
+                        <option value="high">Above $2000</option>
+                    </select>
+                </div>
+                <div class="car-list">
+                    {% for id, car in cars.items() %}
+                    <div class="car" data-price="{{ car['price'] }}">
+                        <img src="../static/image/{{ car['image'] }}" alt="{{ car['brand'] }}">
+                        <h3>{{ car['brand'] }} - {{ car['model'] }}</h3>
+                        <p>Price: ${{ car['price'] }}/day</p>
+                        <p>Availability: 
+                            <span class="status">
+                                {% if car['availability'] == 'available' %}
+                                    Available
+                                {% else %}
+                                    Rented
+                                {% endif %}
+                            </span>
+                        </p>
+
+                        {% if car['availability'] == 'available' %}
+                            <button class="rent-button" onclick="rentCar(this, '{{ car.brand }}', '${{ car.price }}/day')">Rent</button>
+                            <button class="cancel-button" onclick="cancelRent(this, '{{ car.brand }}','${{ car.price }}/day')" style="display:none;">Cancel</button>
+                        {% else %}
+                            <button class="rent-button" disabled>Rent</button>
+                        {% endif %}
+                        
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        <div class="section-box">
+            <section id="history" class="section">
+                <h2>Your Rental History</h2>
+                <p>View your past car rentals and manage bookings.</p>
+                <ul id="rental-history">
+                    {% for rental in rentals %}
+                    <li id="rent-history">{{ rental.car_info.brand }} - ${{ rental.car_info.price }}/day ({{ rental.approval_status }})</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+    </div>
+    <script>
+        let totalAmount = 0;
+
+        function toggleMenu() {
+            const menu = document.getElementById("dropdownMenu");
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+
+        function filterCars() {
+            const filter = document.getElementById("price-filter").value;
+            const cars = document.querySelectorAll(".car");
+            
+            cars.forEach(car => {
+                const price = parseInt(car.getAttribute("data-price"));
+                if (
+                    filter === "all" ||
+                    (filter === "low" && price < 500) ||
+                    (filter === "medium" && price >= 500 && price <= 2000) ||
+                    (filter === "high" && price > 2000)
+                ) {
+                    car.style.display = "block";
+                } else {
+                    car.style.display = "none";
+                }
+            });
+        }
+
+        function rentCar(button, carName, price) {
+            const carDiv = button.parentElement;
+            const status = carDiv.querySelector(".status");
+            status.textContent = "Pending Payment";
+            button.textContent = "Pending";
+            button.disabled = true;
+            button.style.backgroundColor = "#ffc107";
+
+            const cancelButton = carDiv.querySelector(".cancel-button");
+            cancelButton.style.display = "block";
+
+            totalAmount += parseFloat(price.replace(/[^0-9.]/g, ''));
+
+            const historyList = document.getElementById("rental-history");
+            const listItem = document.createElement("li");
+            listItem.textContent = `${carName} - ${price} (pending)`;
+            listItem.setAttribute("data-car", carName);
+            historyList.appendChild(listItem);
+
+            fetch('/add_rental', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    car_brand: carName,
+                    price: price
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Rental added successfully");
+                    listItem.setAttribute('data-rental-id', data.rental_id);
+                } else {
+                    // Jika gagal, kembalikan tombol ke keadaan semula
+                    console.error("Failed to add rental");
+                    status.textContent = "Available";
+                    button.textContent = "Rent";
+                    button.disabled = false;
+                    button.style.backgroundColor = "";
+                    cancelButton.style.display = "none";
+                    listItem.remove();
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                status.textContent = "Available";
+                button.textContent = "Rent";
+                button.disabled = false;
+                button.style.backgroundColor = "";
+                cancelButton.style.display = "none";
+                listItem.remove();
+            });
+        }
+
+        function cancelRent(button, carName, price) {
+            const carDiv = button.parentElement;
+            const status = carDiv.querySelector(".status");
+            const rentButton = carDiv.querySelector(".rent-button");
+            const historyList = document.getElementById("rental-history");
+            const items = historyList.getElementsByTagName("li");
+            totalAmount -= parseFloat(price.replace(/[^0-9.]/g, ''));
+
+
+            fetch('/cancel_rental', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    // rental_id: rentalId,
+                    car_brand: carName
+                })
+            })
+            .then(response => response.json())
+            .then(({success, car_brand, message}) => {
+                if (success) {
+                    status.textContent = "Available";
+                    rentButton.textContent = "Rent";
+                    rentButton.disabled = false;
+                    rentButton.style.backgroundColor = "#28a745";
+                    button.style.display = "none";
+                    
+                    let rentalItem = null;
+
+                    for (let i = 0; i < items.length; i++) {
+                    if (items[i].getAttribute("data-car") === car_brand) {
+                        console.log(items[i])
+                        console.log(items[i].getAttribute("data-car"))
+                        rentalItem = items[i];
+                        break;
+                    }}
+
+                    if (rentalItem) {
+                        historyList.removeChild(rentalItem);
+                    }
+
+                } else {
+                    alert("Failed to cancel rental: " + (data.error || "Unknown error"));
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Failed to cancel rental. Please try again.");
+            });
+        }
+
+        function processPayment() {
+            if (totalAmount === 0) {
+                alert("No rentals to pay for!");
+                return;
+            }
+
+            fetch('/process_payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total: totalAmount })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let total_amount = data.total_amount;
+                    alert(`Payment of $${totalAmount} successful!`);
+
+                    // Update rental history
+                    document.querySelectorAll("#rental-history li").forEach(item => {
+                        if (item.textContent.includes("pending")) {
+                            item.textContent = item.textContent.replace("pending", "Paid");
+                        }
+                    });
+
+                    // Update buttons and car status
+                    document.querySelectorAll(".car").forEach(carDiv => {
+                        const status = carDiv.querySelector(".status");
+                        const rentButton = carDiv.querySelector(".rent-button");
+                        const cancelButton = carDiv.querySelector(".cancel-button");
+
+                        if (status.textContent.trim() === "Pending Payment") {
+                            status.textContent = "Paid";
+                            rentButton.textContent = "Paid";
+                            rentButton.disabled = true;
+                            rentButton.style.backgroundColor = "#6c757d";
+                            cancelButton.style.display = "none";
+                        }
+                    });
+
+                    totalAmount = 0;
+                    document.getElementById("total-price").textContent = "$0";
+
+                    // Refresh rental history to update the list
+                    fetch('/get_rental_history')
+                        .then(response => response.json())
+                        .then(historyData => {
+                            const historyList = document.getElementById("rental-history");
+                            historyList.innerHTML = "";
+                            historyData.forEach(rental => {
+                                const listItem = document.createElement("li");
+                                listItem.textContent = `${rental.car_info.brand} - $${rental.car_info.price}/day (${rental.approval_status})`;
+                                historyList.appendChild(listItem);
+                            });
+                        });
+
+                } else {
+                    alert("Payment failed.");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+    </script>
+</body>
+</html>
