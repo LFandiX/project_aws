@@ -7,8 +7,8 @@ class SQL:
     def create_connection(self):
         try:
             self.connection = mysql.connector.connect(
-                host="localhost",
-                user="root",
+                host="rentaldb.cdm4ewgaio3j.us-east-1.rds.amazonaws.com",
+                user="admin",
                 password="FNDDatabase.1",
                 database="car_rental"
             )
