@@ -22,10 +22,10 @@ class SQL:
             DB_PASSWORD = get_param('/myapp/DB_PASSWORD')
             DB_NAME = get_param('/myapp/DB_NAME')
             self.connection = mysql.connector.connect(
-                host="rentaldb.cdm4ewgaio3j.us-east-1.rds.amazonaws.com",
-                user="admin",
-                password="FNDDatabase.1",
-                database="car_rental"
+                host= DB_HOST,
+                user= DB_USER,
+                password= DB_PASSWORD,
+                database= DB_NAME
             )
             print("Connection to database is successful")
             return self.connection
