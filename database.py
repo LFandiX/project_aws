@@ -1,11 +1,26 @@
 import mysql.connector
 
+import boto3
+import os
+
+def get_param(name):
+    ssm = boto3.client('ssm', region_name='us-east-1')  # atau region sesuai EC2-mu
+    response = ssm.get_parameter(Name=name, WithDecryption=True)
+    return response['Parameter']['Value']
+
+
+
+
 class SQL:
     def __init__(self):
         self.connection = self.create_connection()
 
     def create_connection(self):
         try:
+            DB_HOST = get_param('/myapp/DB_HOST')
+            DB_USER = get_param('/myapp/DB_USER')
+            DB_PASSWORD = get_param('/myapp/DB_PASSWORD')
+            DB_NAME = get_param('/myapp/DB_NAME')
             self.connection = mysql.connector.connect(
                 host="rentaldb.cdm4ewgaio3j.us-east-1.rds.amazonaws.com",
                 user="admin",
