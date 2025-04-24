@@ -2,6 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from database import SQL
 from datetime import date, datetime, timedelta
 
+def get_param(name):
+    ssm = boto3.client('ssm', region_name='us-east-1')  # atau region sesuai EC2-mu
+    response = ssm.get_parameter(Name=name, WithDecryption=True)
+    return response['Parameter']['Value']
+
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
