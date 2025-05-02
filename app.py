@@ -29,7 +29,7 @@ def home():
 
 @app.route('/health')
 def health_check():
-    return 'OK', 200
+    return "{'instanceID': 'i-02b98545ce5ab99fe'}", 200
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
